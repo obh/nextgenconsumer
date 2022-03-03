@@ -29,5 +29,5 @@ logConfig:
 redisConfig:
   secured: false
   hostname: "localhost"
-  port: "6379"
+  port: "7000"
   queueName: "pgnextgenconsumer"

@@ -39,8 +39,9 @@ func InitConsumer(c context.Context, config l.ConsumerConfig, q *EventQueue, e *
 	}
 
 	for i := 0; i < config.NumConsumers; i++ {
-		name := fmt.Sprintf("consumer %d", i)
-		if _, err := queue.AddBatchConsumer(name, config.PrefetchLimit, pollDuration, NewConsumer(i, config, e)); err != nil {
+		name := fmt.Sprintf("{consumer} %d", i)
+		if _, err := queue.AddBatchConsumer(name, config.PrefetchLimit, pollDuration,
+			NewConsumer(i, config, e)); err != nil {
 			l.H.Error(c, "Error encountered when adding consumer", err)
 			panic(err)
 		}

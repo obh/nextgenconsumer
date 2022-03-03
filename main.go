@@ -6,24 +6,18 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	config "pgnextgenconsumer/config"
 	_db "pgnextgenconsumer/emitter"
 	queue "pgnextgenconsumer/queue"
 	event "pgnextgenconsumer/routes"
-	"syscall"
 	"time"
 
 	"github.com/adjust/rmq/v4"
 	"github.com/labstack/echo/v4"
 )
-
-const (
-	logHeader = `{"time":"${time_rfc3339_nano}","level":"${level}","prefix":"prefixs","file":"${short_file}","line":"${line}", "application": "pgnextgenconsumer"}`
-)
-
-var counter int32
 
 func main() {
 
@@ -43,30 +37,31 @@ func main() {
 	}
 
 	e := echo.New()
-	e.Logger.SetHeader(logHeader)
 
 	queue.InitConsumer(context.Background(), cfg.ConsumerConfig, q, db)
 	eventRoute := e.Group("v1")
 	event.ConfigureEventHandlerHTTP(eventRoute, q)
 
-	//go e.Start(cfg.Port)
-	e.Logger.Fatal(e.Start(":" + cfg.Port))
+	// Start server
+	go func() {
+		if err := e.Start(":" + cfg.Port); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatal("shutting down the server")
+		}
+	}()
 	logErrors(errChan)
-	//graceFullShutdown(e)
+	graceFullShutdown(e, errChan)
 }
 
-func graceFullShutdown(e *echo.Echo) {
+func graceFullShutdown(e *echo.Echo, errChan chan error) {
 	fmt.Println("in greaceful shutdown")
-	channel := make(chan os.Signal, 1)
-	signal.Notify(channel, os.Interrupt, syscall.SIGTERM)
-	<-channel
-	log.Println("Service has been shut down")
-	ctx, done := context.WithTimeout(context.Background(), time.Duration(5)*time.Minute)
-	defer done()
-	fmt.Println("Go routines cleared successfully to shut down")
-	err := e.Shutdown(ctx)
-	if err != nil {
-		os.Exit(5000)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	close(errChan)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := e.Shutdown(ctx); err != nil {
+		e.Logger.Fatal(err)
 	}
 }
 
@@ -79,7 +74,8 @@ func redisConnShutdown(e *echo.Echo, errChan <-chan error) {
 	}
 }
 
-func logErrors(errChan <-chan error) {
+func logErrors(errChan chan error) {
+	fmt.Println("in log errors")
 	for err := range errChan {
 		switch err := err.(type) {
 		case *rmq.HeartbeatError:
@@ -89,6 +85,7 @@ func logErrors(errChan <-chan error) {
 				log.Print("heartbeat error: ", err)
 			}
 		case *rmq.ConsumeError:
+			fmt.Println(err.RedisErr.Error())
 			log.Print("consume error: ", err)
 		case *rmq.DeliveryError:
 			log.Print("delivery error: ", err.Delivery, err)

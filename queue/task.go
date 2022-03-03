@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/adjust/rmq/v4"
+	"github.com/go-redis/redis/v8"
 )
 
 const (
@@ -22,12 +23,12 @@ type EventQueue struct {
 func InitQueue(config l.RedisConfig, errChan chan<- error) (*EventQueue, error) {
 	// errChan := make(chan error)
 	redisHost := config.Hostname + ":" + config.Port
-	connection, err := rmq.OpenConnection("my service", "tcp", redisHost, 1, errChan)
+	// connection, err := rmq.OpenConnection("my service", "tcp", redisHost, 1, errChan)
 	ctx := context.Background()
-	// r := redis.NewClient(&redis.Options{
-	// 	Addr: redisHost,
-	// })
-	// connection, err := rmq.OpenConnectionWithRedisClient("my service", r, errChan)
+	r := redis.NewClient(&redis.Options{
+		Addr: redisHost,
+	})
+	connection, err := rmq.OpenConnectionWithRedisClient("my service", r, errChan)
 	if err != nil {
 		l.H.Error(ctx, "Failed in connecting to redis, ", err)
 		return nil, err

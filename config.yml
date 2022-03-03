@@ -1,0 +1,33 @@
+debug: false
+port: 4000
+profile: dev0
+mysqlConfig:
+  secured: true
+  hostname: "localhost"
+  username: "root"
+  database: "pgnextgenconsumer"
+  maxConn: 10
+  maxIdleConn: 10
+  maxConnLifetimeMin: 20
+
+consumerConfig:
+  prefetchLimit: 1
+  pollDuration: 200
+  numConsumers: 1
+  reportBatchSize: 10000
+  shouldLog: true
+
+logConfig:
+  logtimeformat: "06-01-02T15:04:05.830+00:00"
+  debug: false
+  loglevel: 1
+  logversion: "0.0.2"
+  application: "pgnextgenconsumer"
+  stacktracelevel: 3
+  handlerlevel: 0
+
+redisConfig:
+  secured: false
+  hostname: "localhost"
+  port: "6379"
+  queueName: "pgnextgenconsumer"
